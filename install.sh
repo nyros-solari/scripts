@@ -123,44 +123,35 @@ class ADBListener(ServiceListener):
                 print(f"{Fore.YELLOW}The debug port might be {suggested_port} (typical value){Fore.RESET}")
                 print(f"{Fore.YELLOW}Check the EXACT port number shown on your device's Wireless debugging screen{Fore.RESET}")
                 
-                # Force interactive input, even with curl | bash
-                # Save terminal settings to restore them later
-                import termios
-                import tty
-                old_settings = termios.tcgetattr(sys.stdin.fileno())
+                # Simple but effective approach - use a Python file for input
+                # Create a temporary script to get input
+                temp_script = """
+import sys
+debug_port = input("Enter the debugging port shown on your device: ")
+sys.stdout.write(debug_port)
+"""
+                with open("/data/data/com.termux/files/usr/tmp/get_port.py", "w") as f:
+                    f.write(temp_script)
                 
+                # Run the temporary script to get input
                 try:
-                    # Force terminal to raw mode
-                    tty.setraw(sys.stdin.fileno())
-                    debug_port = ""
-                    print(f"{Fore.CYAN}Enter the debugging port shown on your device: {Fore.RESET}", end="", flush=True)
+                    # Run python script in a new process to get input
+                    get_port_cmd = ["python", "/data/data/com.termux/files/usr/tmp/get_port.py"]
+                    port_process = subprocess.run(get_port_cmd, capture_output=True, text=True)
+                    debug_port_str = port_process.stdout.strip()
                     
-                    # Get input character by character
-                    while True:
-                        char = sys.stdin.read(1)
-                        if char == '\r' or char == '\n':  # Enter key
-                            break
-                        elif char.isdigit():  # Only accept digits
-                            debug_port += char
-                            print(char, end="", flush=True)
-                    
-                    print()  # New line after input
-                    
-                    # If no input provided, use suggested port
-                    if not debug_port:
-                        debug_port = str(suggested_port)
-                        print(f"{Fore.YELLOW}No input provided, using suggested port: {debug_port}{Fore.RESET}")
-                    
-                    debug_port = int(debug_port)
-                    
+                    # If no input or invalid, use suggested port
+                    if not debug_port_str or not debug_port_str.isdigit():
+                        print(f"{Fore.YELLOW}No valid port entered, using suggested port: {suggested_port}{Fore.RESET}")
+                        debug_port = suggested_port
+                    else:
+                        debug_port = int(debug_port_str)
+                        print(f"{Fore.CYAN}Using port: {debug_port}{Fore.RESET}")
                 except Exception as e:
-                    # If anything fails, still ask for input but in a different way
-                    print(f"{Fore.RED}Input error: {e}{Fore.RESET}")
-                    print(f"{Fore.YELLOW}Please manually enter the port now:{Fore.RESET}")
-                    debug_port = int(input("> ").strip() or suggested_port)
-                finally:
-                    # Restore terminal settings
-                    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_settings)
+                    # Fallback to suggested port if process fails
+                    print(f"{Fore.RED}Error getting port: {e}{Fore.RESET}")
+                    print(f"{Fore.YELLOW}Using suggested port: {suggested_port}{Fore.RESET}")
+                    debug_port = suggested_port
                 
                 print(f"{Fore.YELLOW}Now connecting using: termux-adb connect {ip_address}:{debug_port}{Fore.RESET}")
                 

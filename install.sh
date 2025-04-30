@@ -1,7 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
 # Enhanced self-contained wireless debugging script using termux-adb
-# Just paste this entire script into Termux and press Enter to run
+# Usage: 
+#   Default (auto calculate port):  ./script.sh
+#   Fixed port:                    ./script.sh 36239 fixed
+
+# Check parameters
+DEBUG_PORT=${1:-"auto"}  # Default to "auto" if not provided
+PORT_MODE=${2:-"offset"} # Default to "offset" mode if not specified
 
 # Terminal colors
 RED='\033[0;31m'
@@ -40,13 +46,42 @@ pip install qrcode colorama zeroconf || { echo -e "${RED}Failed to install Pytho
 
 # Create and run the Python script
 echo -e "${CYAN}Launching wireless debugging tool...${NC}"
-python - << 'EOF'
+
+if [ "$PORT_MODE" = "fixed" ]; then
+    echo -e "${YELLOW}Will use fixed debug port: ${DEBUG_PORT}${NC}"
+else
+    if [ "$DEBUG_PORT" = "auto" ]; then
+        echo -e "${YELLOW}Will automatically calculate debug port (pairing port - 1)${NC}"
+    else
+        echo -e "${YELLOW}Will use port offset: ${DEBUG_PORT}${NC}"
+    fi
+fi
+
+python - "$DEBUG_PORT" "$PORT_MODE" << 'EOF'
 #!/data/data/com.termux/files/usr/bin/python
 import os
 import subprocess
 import time
 from random import randint
 import sys
+
+# Get parameters from command line
+PORT_PARAM = "auto"
+PORT_MODE = "offset"
+
+if len(sys.argv) > 1:
+    PORT_PARAM = sys.argv[1]  # Could be "auto", a number for offset, or a fixed port
+    
+if len(sys.argv) > 2:
+    PORT_MODE = sys.argv[2]   # "offset" or "fixed"
+
+# Convert port parameter to int if it's a number
+if PORT_PARAM != "auto" and PORT_PARAM.isdigit():
+    PORT_PARAM = int(PORT_PARAM)
+else:
+    # Default offset if auto mode
+    if PORT_PARAM == "auto":
+        PORT_PARAM = 1
 
 # Check if termux-adb exists using a simple command
 try:
@@ -118,42 +153,16 @@ class ADBListener(ServiceListener):
             
             if "Successfully paired" in process.stdout:
                 print(f"{Fore.GREEN}Successfully paired with {ip_address}:{port}{Fore.RESET}")
-                # Show the port from pairing
-                suggested_port = port - 1
-                print(f"{Fore.YELLOW}The debug port might be {suggested_port} (typical value){Fore.RESET}")
-                print(f"{Fore.YELLOW}Check the EXACT port number shown on your device's Wireless debugging screen{Fore.RESET}")
                 
-                # Simple but effective approach - use a Python file for input
-                # Create a temporary script to get input
-                temp_script = """
-import sys
-debug_port = input("Enter the debugging port shown on your device: ")
-sys.stdout.write(debug_port)
-"""
-                with open("/data/data/com.termux/files/usr/tmp/get_port.py", "w") as f:
-                    f.write(temp_script)
-                
-                # Run the temporary script to get input
-                try:
-                    # Run python script in a new process to get input
-                    get_port_cmd = ["python", "/data/data/com.termux/files/usr/tmp/get_port.py"]
-                    port_process = subprocess.run(get_port_cmd, capture_output=True, text=True)
-                    debug_port_str = port_process.stdout.strip()
-                    
-                    # If no input or invalid, use suggested port
-                    if not debug_port_str or not debug_port_str.isdigit():
-                        print(f"{Fore.YELLOW}No valid port entered, using suggested port: {suggested_port}{Fore.RESET}")
-                        debug_port = suggested_port
-                    else:
-                        debug_port = int(debug_port_str)
-                        print(f"{Fore.CYAN}Using port: {debug_port}{Fore.RESET}")
-                except Exception as e:
-                    # Fallback to suggested port if process fails
-                    print(f"{Fore.RED}Error getting port: {e}{Fore.RESET}")
-                    print(f"{Fore.YELLOW}Using suggested port: {suggested_port}{Fore.RESET}")
-                    debug_port = suggested_port
-                
-                print(f"{Fore.YELLOW}Now connecting using: termux-adb connect {ip_address}:{debug_port}{Fore.RESET}")
+                # Determine debug port based on mode
+                if PORT_MODE == "fixed":
+                    # Use the exact port specified
+                    debug_port = PORT_PARAM
+                    print(f"{Fore.YELLOW}Using fixed debug port: {debug_port}{Fore.RESET}")
+                else:
+                    # Calculate debug port based on offset
+                    debug_port = port - PORT_PARAM
+                    print(f"{Fore.YELLOW}Using calculated debug port: {debug_port} (pairing port - {PORT_PARAM}){Fore.RESET}")
                 
                 # Try to connect automatically with termux-adb
                 connect_cmd = f"termux-adb connect {ip_address}:{debug_port}"
@@ -169,7 +178,17 @@ sys.stdout.write(debug_port)
                     print(f"{Fore.YELLOW}Connection response: {connect_process.stdout}{Fore.RESET}")
                     if connect_process.stderr:
                         print(f"{Fore.RED}Error: {connect_process.stderr}{Fore.RESET}")
-                    print(f"{Fore.YELLOW}You may need to try manually: termux-adb connect {ip_address}:{debug_port}{Fore.RESET}")
+                    
+                    # Try with port exactly as provided in pairing response
+                    print(f"{Fore.YELLOW}Trying with original pairing port...{Fore.RESET}")
+                    alt_debug_port = port
+                    connect_cmd = f"termux-adb connect {ip_address}:{alt_debug_port}"
+                    connect_process = subprocess.run(connect_cmd.split(), capture_output=True, text=True)
+                    if "connected" in connect_process.stdout.lower():
+                        print(f"{Fore.GREEN}Successfully connected using pairing port {alt_debug_port}{Fore.RESET}")
+                    else:
+                        print(f"{Fore.RED}Failed to connect. Please try manually.{Fore.RESET}")
+                        print(f"{Fore.YELLOW}Try manual connection: termux-adb connect {ip_address}:<PORT>{Fore.RESET}")
             else:
                 print(f"{Fore.RED}Pairing failed: {process.stdout}{Fore.RESET}")
                 if process.stderr:

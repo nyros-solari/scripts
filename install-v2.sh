@@ -37,13 +37,18 @@ if ! which termux-adb >/dev/null; then
 fi
 echo -e "${GREEN}termux-adb successfully installed!${NC}"
 
-# Request storage permissions
-echo -e "${CYAN}Setting up storage access...${NC}"
-termux-setup-storage || { 
-    echo -e "${YELLOW}Please grant storage permission when prompted${NC}"
-    echo -e "${RED}Storage permission is required to download and install the APK${NC}"
-    exit 1
-}
+# Request storage permissions only if needed
+echo -e "${CYAN}Checking storage access...${NC}"
+if [ ! -d "$HOME/storage/downloads" ]; then
+    echo -e "${CYAN}Setting up storage access...${NC}"
+    termux-setup-storage || { 
+        echo -e "${YELLOW}Please grant storage permission when prompted${NC}"
+        echo -e "${RED}Storage permission is required to download and install the APK${NC}"
+        exit 1
+    }
+else
+    echo -e "${GREEN}Storage access already configured, continuing...${NC}"
+fi
 
 # Check and download the APK if needed
 echo -e "${CYAN}Checking for existing APK...${NC}"

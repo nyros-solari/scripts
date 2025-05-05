@@ -257,8 +257,4 @@ finally:
 EOF
 
 echo -e "${GREEN}Script execution completed.${NC}"
-echo -e "${CYAN}If you faced any issues, try running the individual commands:${NC}"
-echo -e "${YELLOW}1. pkg update -y${NC}"
-echo -e "${YELLOW}2. pkg install -y python which curl${NC}"
-echo -e "${YELLOW}3. curl -s https://raw.githubusercontent.com/nohajc/termux-adb/master/install.sh | bash${NC}"
-echo -e "${YELLOW}4. pip install qrcode colorama zeroconf${NC}"
+echo -e "${CYAN}If you faced any issues, contact with the admin:${NC}"

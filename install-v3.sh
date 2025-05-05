@@ -6,6 +6,9 @@
 # Check if a specific port was provided as an argument
 DEBUG_PORT=${1}  # Can be empty if not provided
 
+# Set how long to keep the APK before automatically deleting (in minutes)
+APK_LIFETIME=${2:-60}  # Default to 60 minutes if not specified
+
 # Terminal colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -58,6 +61,21 @@ else
         exit 1
     }
     echo -e "${GREEN}APK downloaded to $APK_PATH${NC}"
+    
+    # Set up automatic deletion of the APK after the specified time
+    # This runs in the background and won't block the main script
+    (
+        echo -e "${YELLOW}APK will be automatically removed after ${APK_LIFETIME} minutes${NC}"
+        # Convert minutes to seconds for sleep
+        sleep_time=$((APK_LIFETIME * 60))
+        sleep $sleep_time
+        if [ -f "$APK_PATH" ]; then
+            rm "$APK_PATH"
+            echo -e "${YELLOW}APK automatically removed after ${APK_LIFETIME} minutes${NC}"
+        fi
+    ) &
+    # Store the background process ID if needed later
+    CLEANUP_PID=$!
 fi
 
 # Install required Python packages

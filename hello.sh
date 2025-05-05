@@ -29,7 +29,7 @@ def check_and_install_packages():
     
     # Install missing packages
     if missing_packages:
-        logger.info("Installing required packages: %s", ", ".join(missing_packages))
+        logger.info("Installing required packages are: %s", ", ".join(missing_packages))
         subprocess.run([
             "pip", "install"
         ] + missing_packages, check=True)

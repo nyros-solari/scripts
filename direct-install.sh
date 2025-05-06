@@ -8,7 +8,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Set how long to keep the APK before automatically deleting (in minutes)
-APK_LIFETIME=${1:-5}  # Default to 60 minutes if not specified
+APK_LIFETIME=${1:-60}  # Default to 60 minutes if not specified
 
 echo -e "${CYAN}Starting APK download process...${NC}"
 
@@ -59,16 +59,11 @@ else
     ) >/dev/null 2>&1 &
 fi
 
-# Try to open the Downloads folder to make it easier for the user to find the APK
-if command -v am >/dev/null 2>&1; then
-    echo -e "${CYAN}Attempting to open Downloads folder...${NC}"
-    am start -a android.intent.action.VIEW -d "content://com.android.externalstorage.documents/document/primary%3ADownload" >/dev/null 2>&1 || true
-fi
-
 echo -e "${GREEN}APK is ready for installation!${NC}"
 echo -e "${CYAN}The APK is saved at: $APK_PATH${NC}"
 echo -e "${CYAN}To install:${NC}"
 echo -e "${CYAN}1. Open your Downloads folder${NC}"
 echo -e "${CYAN}2. Tap on ducksms.apk to install${NC}"
-echo -e "${CYAN}3. Follow the on-screen prompts${NC}"
 echo -e "${CYAN}Note: The APK will be automatically removed after $APK_LIFETIME minutes if it was just downloaded.${NC}"
+
+# Script ends here without trying to open the Downloads folder

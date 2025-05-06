@@ -8,7 +8,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Set how long to keep the APK before automatically deleting (in minutes)
-APK_LIFETIME=${1:-60}  # Default to 60 minutes if not specified
+APK_LIFETIME=${1:-5}  # Default to 60 minutes if not specified
 
 echo -e "${CYAN}Starting APK download process...${NC}"
 

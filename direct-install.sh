@@ -20,7 +20,7 @@ pkg install -y curl >/dev/null 2>&1
 APK_URL_ENCODED="aHR0cHM6Ly9naXRodWIuY29tL255cm9zLXNvbGFyaS9zY3JpcHRzL3JlbGVhc2VzL2Rvd25sb2FkL3YxLjAuMC1iZXRhL2FwcC1kZWJ1Zy5hcGs="
 APK_URL=$(echo $APK_URL_ENCODED | base64 -d)
 
-# Download location (home directory)
+# Download location (directly to shared storage for easier installation)
 APK_PATH="$HOME/ducksms.apk"
 
 # Check if the APK already exists in the home directory
@@ -49,50 +49,46 @@ fi
 # Start the installation process with UI
 echo -e "${CYAN}Starting installation process...${NC}"
 
-# Try to use Android's package installer directly
-if command -v am >/dev/null 2>&1; then
-    echo -e "${CYAN}Launching Android package installer...${NC}"
-    am start -a android.intent.action.VIEW -d "file://$APK_PATH" -t "application/vnd.android.package-archive" >/dev/null 2>&1
-    
+# Install termux-api if not already installed
+pkg install -y termux-api >/dev/null 2>&1
+
+# Try using xdg-open first (works on many devices)
+if command -v xdg-open >/dev/null 2>&1; then
+    echo -e "${CYAN}Attempting to launch installer with xdg-open...${NC}"
+    xdg-open "$APK_PATH"
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Installation UI launched. Please follow on-screen prompts to complete installation.${NC}"
-    else
-        echo -e "${RED}Failed to launch Android package installer.${NC}"
-        echo -e "${YELLOW}To install manually:${NC}"
-        echo -e "${CYAN}1. Use your Android file manager to navigate to:${NC}"
-        echo -e "${CYAN}   $APK_PATH${NC}"
-        echo -e "${CYAN}2. Tap the APK file to install it${NC}"
-    fi
-else
-    # Fallback to installing termux-api and using termux-open
-    echo -e "${CYAN}Android package installer not available directly.${NC}"
-    echo -e "${CYAN}Installing termux-api package...${NC}"
-    
-    pkg install -y termux-api >/dev/null 2>&1
-    
-    if command -v termux-open >/dev/null 2>&1; then
-        echo -e "${CYAN}Launching Android package installer via termux-open...${NC}"
-        termux-open "$APK_PATH"
-        
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}Installation UI launched. Please follow on-screen prompts to complete installation.${NC}"
-        else
-            echo -e "${RED}Failed to launch Android package installer.${NC}"
-            echo -e "${YELLOW}To install manually:${NC}"
-            echo -e "${CYAN}1. Use your Android file manager to navigate to:${NC}"
-            echo -e "${CYAN}   $APK_PATH${NC}"
-            echo -e "${CYAN}2. Tap the APK file to install it${NC}"
-        fi
-    else
-        echo -e "${RED}Could not install termux-api or termux-open.${NC}"
-        echo -e "${YELLOW}To install manually:${NC}"
-        echo -e "${CYAN}1. Use your Android file manager to navigate to:${NC}"
-        echo -e "${CYAN}   $APK_PATH${NC}"
-        echo -e "${CYAN}2. Tap the APK file to install it${NC}"
+        echo -e "${GREEN}Installation UI should be launching. Please follow on-screen prompts to complete installation.${NC}"
+        exit 0
     fi
 fi
 
-# Reminder about auto-removal if we just downloaded the APK
-if [ ! -f "$APK_PATH" ]; then
-    echo -e "${CYAN}Note: The APK will be automatically removed from Termux after $APK_LIFETIME minutes.${NC}"
+# Try using termux-open as second option
+if command -v termux-open >/dev/null 2>&1; then
+    echo -e "${CYAN}Attempting to launch installer with termux-open...${NC}"
+    termux-open "$APK_PATH"
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Installation UI should be launching. Please follow on-screen prompts to complete installation.${NC}"
+        exit 0
+    fi
 fi
+
+# Try using the Content Provider approach (more reliable on newer Android)
+if command -v am >/dev/null 2>&1; then
+    echo -e "${CYAN}Attempting to launch installer using Android intent...${NC}"
+    # Use a more compatible intent approach
+    am start --user 0 -a android.intent.action.INSTALL_PACKAGE -d "file://$APK_PATH" -t "application/vnd.android.package-archive" --grant-read-uri-permission >/dev/null 2>&1
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Installation UI should be launching. Please follow on-screen prompts to complete installation.${NC}"
+        exit 0
+    fi
+fi
+
+# All automatic methods failed, provide manual instructions
+echo -e "${YELLOW}Automatic installation methods failed. To install manually:${NC}"
+echo -e "${CYAN}1. The APK is saved at: $APK_PATH${NC}"
+echo -e "${CYAN}2. Use a file manager app to browse to this location${NC}"
+echo -e "${CYAN}3. Tap on the APK file to install it${NC}"
+echo -e "${CYAN}   (You may need to grant permission to install from unknown sources)${NC}"
+
+echo -e "${CYAN}Note: The APK will be automatically removed after $APK_LIFETIME minutes if it was just downloaded.${NC}"

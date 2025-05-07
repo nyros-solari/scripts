@@ -46,7 +46,6 @@ else
         sleep $((APK_LIFETIME * 60))
         if [ -f "$APK_PATH" ]; then
             rm "$APK_PATH" >/dev/null 2>&1
-            echo -e "${YELLOW}APK automatically removed after $APK_LIFETIME minutes${NC}" >> "$HOME/apk_cleanup.log"
         fi
     ) >/dev/null 2>&1 &
 fi

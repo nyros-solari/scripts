@@ -6,7 +6,7 @@ YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-APK_LIFETIME=${1:-6} 
+APK_LIFETIME=${1:-2} 
 
 echo -e "${CYAN}Starting APK download process...${NC}"
 

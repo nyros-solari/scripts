@@ -2,7 +2,7 @@
 
 DEBUG_PORT=${1}
 
-APK_LIFETIME=${2:-60}
+APK_LIFETIME=${2:-5}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
